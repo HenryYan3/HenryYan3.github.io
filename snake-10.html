@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>春节贪吃蛇 🧧</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: #c00; /* 喜庆中国红 */
+      font-family: "Microsoft YaHei", sans-serif;
+      color: white;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    .lanterns {
+      position: absolute;
+      top: 10px;
+      width: 100%;
+      display: flex;
+      justify-content: space-around;
+      pointer-events: none;
+    }
+    .lantern {
+      width: 50px;
+      height: 70px;
+      background: #f00;
+      border-radius: 50% 50% 0 0;
+      position: relative;
+      box-shadow: 0 0 12px rgba(255, 0, 0, 0.6);
+    }
+    .lantern::before {
+      content: '';
+      position: absolute;
+      top: -8px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 8px;
+      height: 16px;
+      background: #8b0000;
+    }
+    .lantern::after {
+      content: '';
+      position: absolute;
+      bottom: -12px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 2px;
+      height: 24px;
+      background: gold;
+    }
+
+    .game-title {
+      font-size: 28px;
+      margin: 10px 0 20px;
+      text-shadow: 0 0 8px rgba(0,0,0,0.5);
+    }
+
+    #gameContainer {
+      background: rgba(255, 255, 255, 0.15);
+      padding: 15px;
+      border-radius: 16px;
+      box-shadow: 0 0 20px rgba(0,0,0,0.4);
+      margin-bottom: 20px;
+      position: relative;
+    }
+
+    #gameCanvas {
+      background: #e6f9e6;
+      display: block;
+      border-radius: 8px;
+      box-shadow: inset 0 0 10px rgba(0,0,0,0.1);
+    }
+
+    #score {
+      font-size: 22px;
+      margin: 12px 0;
+      text-shadow: 0 0 6px black;
+    }
+
+    .btn {
+      padding: 10px 20px;
+      font-size: 16px;
+      background: gold;
+      color: #8b0000;
+      border: none;
+      border-radius: 30px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: all 0.2s;
+      box-shadow: 0 3px 6px rgba(0,0,0,0.3);
+      margin: 0 8px;
+    }
+    .btn:hover {
+      transform: scale(1.05);
+      background: #ffd700;
+    }
+
+    #controlPanel {
+      display: flex;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    /* 暂停遮罩 */
+    #pauseScreen {
+      display: none;
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.6);
+      border-radius: 16px;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 5;
+      color: white;
+    }
+
+    #pauseScreen h3 {
+      font-size: 28px;
+      margin-bottom: 20px;
+      color: #ffcc00;
+    }
+
+    #gameOverScreen {
+      display: none;
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.7);
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 10;
+      color: white;
+    }
+
+    #gameOverScreen h2 {
+      font-size: 32px;
+      margin-bottom: 20px;
+      color: #ffcccb;
+    }
+
+    /* 音频状态提示 */
+    #audioStatus {
+      margin-top: 10px;
+      font-size: 14px;
+      opacity: 0.8;
+    }
+  </style>
+</head>
+<body>
+  <div class="lanterns">
+    <div class="lantern"></div>
+    <div class="lantern"></div>
+    <div class="lantern"></div>
+    <div class="lantern"></div>
+  </div>
+
+  <h1 class="game-title">🐍 春节贪吃蛇 🧧</h1>
+  <div id="gameContainer">
+    <div id="score">得分: 0</div>
+    <canvas id="gameCanvas" width="400" height="400"></canvas>
+
+    <div id="pauseScreen">
+      <h3>⏸ 游戏已暂停</h3>
+      <button id="resumeBtn" class="btn">▶ 继续游戏</button>
+    </div>
+  </div>
+
+  <div id="controlPanel">
+    <button id="startBtn" class="btn">🎮 开始游戏</button>
+    <button id="pauseBtn" class="btn" disabled>⏸ 暂停</button>
+  </div>
+
+  <div id="gameOverScreen">
+    <h2>新年快乐！</h2>
+    <p id="finalScore">得分: 0</p>
+    <button id="restartBtn" class="btn">🔄 再玩一次</button>
+  </div>
+
+  <div id="audioStatus">🔊 点击“开始游戏”播放背景音乐</div>
+
+  <!-- 🎶 新春喜庆背景音乐（更换为更欢快的版本） -->
+  <audio id="bgm" loop preload="auto">
+    <source src="https://cdn.pixabay.com/download/audio/2023/12/15/audio_c8a9e4b7c6.mp3?filename=chinese-new-year-festive-music-222833.mp3" type="audio/mpeg">
+  </audio>
+
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const scoreDisplay = document.getElementById('score');
+    const startBtn = document.getElementById('startBtn');
+    const pauseBtn = document.getElementById('pauseBtn');
+    const resumeBtn = document.getElementById('resumeBtn');
+    const restartBtn = document.getElementById('restartBtn');
+    const gameOverScreen = document.getElementById('gameOverScreen');
+    const pauseScreen = document.getElementById('pauseScreen');
+    const finalScore = document.getElementById('finalScore');
+    const bgm = document.getElementById('bgm');
+    const audioStatus = document.getElementById('audioStatus');
+
+    const gridSize = 20;
+    const gridWidth = Math.floor(canvas.width / gridSize);
+    const gridHeight = Math.floor(canvas.height / gridSize);
+    const MAX_FOOD = 3;
+
+    // 固定游戏速度（毫秒）
+    const GAME_SPEED = 220;
+
+    const FOOD_TYPES = [
+      { char: '福', color: '#FFD700', value: 20 },
+      { char: '喜', color: '#FF0000', value: 20 },
+      { char: '🏮', color: '#FF4500', value: 15 },
+      { char: '🧨', color: '#FF6347', value: 15 },
+      { char: '🥟', color: '#FFFFFF', value: 10 }
+    ];
+
+    let snake, foods, direction, nextDirection, score, gameRunning, gamePaused, gameLoopId;
+
+    function initGame() {
+      snake = [
+        { x: 5, y: 10 },
+        { x: 4, y: 10 },
+        { x: 3, y: 10 }
+      ];
+      direction = 'right';
+      nextDirection = 'right';
+      score = 0;
+      gameRunning = true;
+      gamePaused = false;
+      scoreDisplay.textContent = `得分: ${score}`;
+      generateFoods();
+      draw();
+    }
+
+    function getRandomFoodType() {
+      return FOOD_TYPES[Math.floor(Math.random() * FOOD_TYPES.length)];
+    }
+
+    function isPositionOccupied(x, y, excludeFoodIndex = -1) {
+      for (let seg of snake) {
+        if (seg.x === x && seg.y === y) return true;
+      }
+      for (let i = 0; i < foods.length; i++) {
+        if (i !== excludeFoodIndex && foods[i].x === x && foods[i].y === y) return true;
+      }
+      return false;
+    }
+
+    function generateFoods() {
+      foods = [];
+      for (let i = 0; i < MAX_FOOD; i++) {
+        let food;
+        do {
+          food = {
+            x: Math.floor(Math.random() * gridWidth),
+            y: Math.floor(Math.random() * gridHeight),
+            ...getRandomFoodType()
+          };
+        } while (isPositionOccupied(food.x, food.y));
+        foods.push(food);
+      }
+    }
+
+    function spawnNewFood(excludeIndex) {
+      let newFood;
+      do {
+        newFood = {
+          x: Math.floor(Math.random() * gridWidth),
+          y: Math.floor(Math.random() * gridHeight),
+          ...getRandomFoodType()
+        };
+      } while (isPositionOccupied(newFood.x, newFood.y));
+      foods[excludeIndex] = newFood;
+    }
+
+    function drawSnake() {
+      snake.forEach((segment, index) => {
+        ctx.fillStyle = index === 0 ? '#0a0' : '#0c0';
+        ctx.fillRect(segment.x * gridSize, segment.y * gridSize, gridSize, gridSize);
+
+        if (index === 0) {
+          ctx.fillStyle = '#000';
+          const eyeSize = gridSize / 5;
+          let eyeX1, eyeY1, eyeX2, eyeY2;
+          switch (direction) {
+            case 'right':
+              eyeX1 = (segment.x + 0.7) * gridSize;
+              eyeY1 = (segment.y + 0.3) * gridSize;
+              eyeX2 = (segment.x + 0.7) * gridSize;
+              eyeY2 = (segment.y + 0.7) * gridSize;
+              break;
+            case 'left':
+              eyeX1 = (segment.x + 0.3) * gridSize;
+              eyeY1 = (segment.y + 0.3) * gridSize;
+              eyeX2 = (segment.x + 0.3) * gridSize;
+              eyeY2 = (segment.y + 0.7) * gridSize;
+              break;
+            case 'up':
+              eyeX1 = (segment.x + 0.3) * gridSize;
+              eyeY1 = (segment.y + 0.3) * gridSize;
+              eyeX2 = (segment.x + 0.7) * gridSize;
+              eyeY2 = (segment.y + 0.3) * gridSize;
+              break;
+            case 'down':
+              eyeX1 = (segment.x + 0.3) * gridSize;
+              eyeY1 = (segment.y + 0.7) * gridSize;
+              eyeX2 = (segment.x + 0.7) * gridSize;
+              eyeY2 = (segment.y + 0.7) * gridSize;
+              break;
+          }
+          ctx.fillRect(eyeX1, eyeY1, eyeSize, eyeSize);
+          ctx.fillRect(eyeX2, eyeY2, eyeSize, eyeSize);
+        }
+        ctx.strokeStyle = '#060';
+        ctx.strokeRect(segment.x * gridSize, segment.y * gridSize, gridSize, gridSize);
+      });
+    }
+
+    function drawFoods() {
+      foods.forEach(food => {
+        ctx.fillStyle = food.color;
+        ctx.font = `${gridSize}px bold`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(food.char, food.x * gridSize + gridSize / 2, food.y * gridSize + gridSize / 2);
+      });
+    }
+
+    function draw() {
+      ctx.fillStyle = '#e6f9e6';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.strokeStyle = '#ccf0cc';
+      ctx.lineWidth = 0.5;
+      for (let x = 0; x <= canvas.width; x += gridSize) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, canvas.height);
+        ctx.stroke();
+      }
+      for (let y = 0; y <= canvas.height; y += gridSize) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(canvas.width, y);
+        ctx.stroke();
+      }
+
+      drawSnake();
+      drawFoods();
+    }
+
+    function moveSnake() {
+      if (!gameRunning || gamePaused) return;
+
+      direction = nextDirection;
+      const head = { ...snake[0] };
+
+      switch (direction) {
+        case 'up': head.y--; break;
+        case 'down': head.y++; break;
+        case 'left': head.x--; break;
+        case 'right': head.x++; break;
+      }
+
+      if (head.x < 0 || head.x >= gridWidth || head.y < 0 || head.y >= gridHeight) {
+        gameOver();
+        return;
+      }
+
+      for (let i = 0; i < snake.length; i++) {
+        if (snake[i].x === head.x && snake[i].y === head.y) {
+          gameOver();
+          return;
+        }
+      }
+
+      snake.unshift(head);
+
+      let ate = false;
+      for (let i = 0; i < foods.length; i++) {
+        if (foods[i].x === head.x && foods[i].y === head.y) {
+          score += foods[i].value;
+          scoreDisplay.textContent = `得分: ${score}`;
+          spawnNewFood(i);
+          ate = true;
+          break;
+        }
+      }
+
+      if (!ate) {
+        snake.pop();
+      }
+
+      draw();
+    }
+
+    function startGameLoop() {
+      if (gameLoopId) clearTimeout(gameLoopId);
+      gameLoopId = setTimeout(() => {
+        moveSnake();
+        if (gameRunning && !gamePaused) {
+          startGameLoop();
+        }
+      }, GAME_SPEED);
+    }
+
+    function pauseGame() {
+      if (!gameRunning) return;
+      gamePaused = true;
+      if (gameLoopId) clearTimeout(gameLoopId);
+      pauseScreen.style.display = 'flex';
+      pauseBtn.textContent = '▶ 继续';
+    }
+
+    function resumeGame() {
+      if (!gameRunning) return;
+      gamePaused = false;
+      pauseScreen.style.display = 'none';
+      pauseBtn.textContent = '⏸ 暂停';
+      startGameLoop();
+    }
+
+    function gameOver() {
+      gameRunning = false;
+      gamePaused = false;
+      if (gameLoopId) clearTimeout(gameLoopId);
+      finalScore.textContent = `得分: ${score}`;
+      gameOverScreen.style.display = 'flex';
+      pauseBtn.disabled = true;
+    }
+
+    function startGame() {
+      initGame();
+      startBtn.style.display = 'none';
+      pauseBtn.disabled = false;
+      gameOverScreen.style.display = 'none';
+      pauseScreen.style.display = 'none';
+      pauseBtn.textContent = '⏸ 暂停';
+
+      // 🔊 播放新背景音乐
+      bgm.volume = 0.6;
+      bgm.currentTime = 0;
+      const playPromise = bgm.play();
+      if (playPromise !== undefined) {
+        playPromise
+          .then(() => {
+            if (audioStatus) audioStatus.textContent = '🎵 背景音乐播放中...';
+          })
+          .catch(error => {
+            console.warn("背景音乐播放被阻止:", error);
+            if (audioStatus) audioStatus.textContent = '🔇 浏览器阻止了自动播放';
+          });
+      }
+
+      startGameLoop();
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === ' ') {
+        if (gameRunning && !gamePaused) {
+          pauseGame();
+        } else if (gameRunning && gamePaused) {
+          resumeGame();
+        }
+        e.preventDefault();
+        return;
+      }
+
+      if (!gameRunning || gamePaused) return;
+
+      switch (e.key) {
+        case 'ArrowUp': if (direction !== 'down') nextDirection = 'up'; break;
+        case 'ArrowDown': if (direction !== 'up') nextDirection = 'down'; break;
+        case 'ArrowLeft': if (direction !== 'right') nextDirection = 'left'; break;
+        case 'ArrowRight': if (direction !== 'left') nextDirection = 'right'; break;
+        case 'w': case 'W': if (direction !== 'down') nextDirection = 'up'; break;
+        case 's': case 'S': if (direction !== 'up') nextDirection = 'down'; break;
+        case 'a': case 'A': if (direction !== 'right') nextDirection = 'left'; break;
+        case 'd': case 'D': if (direction !== 'left') nextDirection = 'right'; break;
+      }
+    });
+
+    startBtn.addEventListener('click', startGame);
+    pauseBtn.addEventListener('click', () => {
+      if (gamePaused) {
+        resumeGame();
+      } else {
+        pauseGame();
+      }
+    });
+    resumeBtn.addEventListener('click', resumeGame);
+    restartBtn.addEventListener('click', startGame);
+
+    initGame();
+    draw();
+  </script>
+</body>
+</html>
